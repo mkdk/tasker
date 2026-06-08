@@ -253,8 +253,25 @@ button { cursor: pointer; font-family: var(--font); border: none; background: no
   gap: 6px;
   transition: all var(--transition);
   animation: slideIn 0.2s ease-out;
+  cursor: pointer;         /* whole card is tappable */
 }
 .task-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.task-card:active { transform: translateY(0) scale(0.99); }
+
+/* Card action buttons — clicks don't bubble to card */
+.card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.btn--icon-edit {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 0.28rem 0.55rem;
+  transition: all var(--transition);
+}
+.btn--icon-edit:hover { background: var(--surface-2); color: var(--primary); border-color: var(--primary); }
+
 
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(8px); }
@@ -453,3 +470,63 @@ button { cursor: pointer; font-family: var(--font); border: none; background: no
   color: #fff;
   box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.35);
 }
+
+/* ─── View Modal ─── */
+.view-modal { max-width: 460px; }
+
+/* Big tappable URL link */
+.view-url-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem 1.2rem;
+  background: rgba(var(--primary-rgb), 0.07);
+  border: 1.5px solid rgba(var(--primary-rgb), 0.2);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--primary);
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all var(--transition);
+  word-break: break-all;
+  line-height: 1.4;
+}
+.view-url-btn:hover {
+  background: rgba(var(--primary-rgb), 0.13);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.view-url-icon { font-size: 1.2rem; flex-shrink: 0; }
+.view-url-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  opacity: 0.6;
+}
+
+/* Note display */
+.view-note {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+}
+
+/* Meta row */
+.view-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
+}
+.view-meta-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.view-meta-value { font-size: 0.88rem; color: var(--text); font-weight: 500; }
+
+/* View modal footer: Done on right, Edit on left */
+.view-modal .modal-footer { justify-content: space-between; }

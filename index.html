@@ -79,11 +79,37 @@
   <!-- ─── Toast ─── -->
   <div id="toast" class="toast hidden"></div>
 
-  <!-- ─── Modal ─── -->
+  <!-- ─── View Modal ─── -->
+  <div id="view-overlay" class="modal-overlay hidden">
+    <div class="modal view-modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2 id="view-modal-title">Item</h2>
+        <button id="view-close" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <a id="view-url" href="#" target="_blank" rel="noopener" class="view-url-btn hidden">
+          <span class="view-url-icon">🔗</span>
+          <span id="view-url-text"></span>
+          <span class="view-url-arrow">↗</span>
+        </a>
+        <div id="view-note" class="view-note hidden"></div>
+        <div class="view-meta">
+          <span class="view-meta-label">Reminder</span>
+          <span id="view-time" class="view-meta-value"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="view-edit-btn" class="btn btn--ghost">✏️ Edit</button>
+        <button id="view-done-btn" class="btn btn--danger">✓ Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Create / Edit Modal ─── -->
   <div id="modal-overlay" class="modal-overlay hidden">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-header">
-        <h2>New Reminder</h2>
+        <h2 id="modal-title">New Reminder</h2>
         <button id="modal-close" class="icon-btn" aria-label="Close">✕</button>
       </div>
 
@@ -111,7 +137,7 @@
         </div>
 
         <div class="input-group">
-          <label for="input-datetime">Or pick a date & time</label>
+          <label for="input-datetime">Or pick a date &amp; time</label>
           <input type="datetime-local" id="input-datetime" />
         </div>
       </div>

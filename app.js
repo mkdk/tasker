@@ -1,5 +1,6 @@
 // app.js – UI logic for Read‑it‑later PWA
-import { signIn, signOut, tryRestoreSession, createTaskEvent, listTaskEvents, deleteTaskEvent } from "./api.js";
+import { signIn, signOut, tryRestoreSession, createTaskEvent, updateTaskEvent, listTaskEvents, deleteTaskEvent } from "./api.js";
+
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
 const themeToggle = document.getElementById("theme-toggle");
@@ -29,8 +30,9 @@ const taskList      = document.getElementById("task-list");
 const addBtn        = document.getElementById("add-btn");
 const toast         = document.getElementById("toast");
 
-// Modal elements
+// Create/Edit modal elements
 const modalOverlay  = document.getElementById("modal-overlay");
+const modalTitle    = document.getElementById("modal-title");
 const modalClose    = document.getElementById("modal-close");
 const modalCancel   = document.getElementById("modal-cancel");
 const modalSave     = document.getElementById("modal-save");
@@ -39,6 +41,17 @@ const inputTitle    = document.getElementById("input-title");
 const inputNote     = document.getElementById("input-note");
 const inputDatetime = document.getElementById("input-datetime");
 const presetBtns    = document.querySelectorAll(".preset-btn");
+
+// View modal elements
+const viewOverlay   = document.getElementById("view-overlay");
+const viewClose     = document.getElementById("view-close");
+const viewModalTitle= document.getElementById("view-modal-title");
+const viewUrl       = document.getElementById("view-url");
+const viewUrlText   = document.getElementById("view-url-text");
+const viewNote      = document.getElementById("view-note");
+const viewTime      = document.getElementById("view-time");
+const viewEditBtn   = document.getElementById("view-edit-btn");
+const viewDoneBtn   = document.getElementById("view-done-btn");
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 function setAuthenticated(isAuth) {
@@ -90,30 +103,41 @@ function showToast(msg, duration = 3000) {
   });
 }
 
-// ─── Modal ───────────────────────────────────────────────────────────────────
-let selectedDate = null;
+// ─── Create / Edit Modal ─────────────────────────────────────────────────────
+let selectedDate  = null;
+let editingEventId = null;   // null = create mode, string = edit mode
 
-function openModal(preFill = {}) {
+function openModal(preFill = {}, eventId = null) {
+  editingEventId      = eventId;
   inputUrl.value      = preFill.url   || "";
   inputTitle.value    = preFill.title || "";
   inputNote.value     = preFill.note  || "";
   inputDatetime.value = "";
   selectedDate        = null;
   presetBtns.forEach(b => b.classList.remove("active"));
+  // Pre-set the date if editing
+  if (preFill.datetime) {
+    selectedDate = new Date(preFill.datetime);
+    const local = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 16);
+    inputDatetime.value = local;
+  }
+  modalTitle.textContent  = eventId ? "Edit Reminder" : "New Reminder";
+  modalSave.textContent   = eventId ? "Update"        : "Save Reminder";
   modalOverlay.classList.remove("hidden");
-  // Focus first empty field
   setTimeout(() => (inputUrl.value ? inputTitle.focus() : inputUrl.focus()), 100);
 }
 
 function closeModal() {
   modalOverlay.classList.add("hidden");
+  editingEventId = null;
 }
 
-addBtn.addEventListener("click", openModal);
+addBtn.addEventListener("click", () => openModal());
 modalClose.addEventListener("click", closeModal);
 modalCancel.addEventListener("click", closeModal);
 modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) closeModal(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeModal(); closeViewModal(); } });
 
 presetBtns.forEach(btn => {
   btn.addEventListener("click", () => {
@@ -123,7 +147,6 @@ presetBtns.forEach(btn => {
     const d = new Date();
     d.setTime(d.getTime() + hours * 3600 * 1000);
     selectedDate = d;
-    // Show in picker (local datetime string)
     const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
       .toISOString().slice(0, 16);
     inputDatetime.value = local;
@@ -142,29 +165,97 @@ modalSave.addEventListener("click", async () => {
   const title = inputTitle.value.trim();
   const note  = inputNote.value.trim();
 
-  // At least one of URL or note is required
-  if (!url && !note && !title) {
-    showToast("Add a URL, title or note");
-    return;
-  }
-  if (!selectedDate) {
-    showToast("Please select a reminder time");
-    return;
-  }
+  if (!url && !note && !title) { showToast("Add a URL, title or note"); return; }
+  if (!selectedDate)           { showToast("Please select a reminder time"); return; }
 
   modalSave.disabled = true;
   modalSave.textContent = "Saving…";
 
   try {
-    await createTaskEvent({ title, url, note, datetime: selectedDate });
+    if (editingEventId) {
+      await updateTaskEvent(editingEventId, { title, url, note, datetime: selectedDate });
+      showToast("Updated ✓");
+    } else {
+      await createTaskEvent({ title, url, note, datetime: selectedDate });
+      showToast("Reminder saved ✓");
+    }
     closeModal();
-    showToast("Reminder saved ✓");
     loadTasks();
   } catch (e) {
     showToast("Failed to save: " + e.message);
   } finally {
     modalSave.disabled = false;
-    modalSave.textContent = "Save Reminder";
+    modalSave.textContent = editingEventId ? "Update" : "Save Reminder";
+  }
+});
+
+// ─── View Modal ───────────────────────────────────────────────────────────────
+let viewingEvent = null;
+
+function openViewModal(ev) {
+  viewingEvent = ev;
+  const desc    = ev.description || "";
+  const lines   = desc.split("\n");
+  const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
+  const noteRaw = desc.match(/Note:\s*([\s\S]*)/)?.[1]?.trim() || (!url ? desc.trim() : "");
+  const title   = ev.summary?.replace(/^Read:\s*/, "") || url || "Note";
+  const start   = new Date(ev.start?.dateTime || ev.start?.date);
+  const timeStr = start.toLocaleString(undefined, { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+
+  viewModalTitle.textContent = title;
+  viewTime.textContent       = timeStr;
+
+  if (url) {
+    viewUrl.href = url;
+    viewUrlText.textContent = url.replace(/^https?:\/\//, "");
+    viewUrl.classList.remove("hidden");
+  } else {
+    viewUrl.classList.add("hidden");
+  }
+
+  if (noteRaw) {
+    viewNote.textContent = noteRaw;
+    viewNote.classList.remove("hidden");
+  } else {
+    viewNote.classList.add("hidden");
+  }
+
+  viewOverlay.classList.remove("hidden");
+}
+
+function closeViewModal() {
+  viewOverlay.classList.add("hidden");
+  viewingEvent = null;
+}
+
+viewClose.addEventListener("click", closeViewModal);
+viewOverlay.addEventListener("click", (e) => { if (e.target === viewOverlay) closeViewModal(); });
+
+viewEditBtn.addEventListener("click", () => {
+  if (!viewingEvent) return;
+  const desc    = viewingEvent.description || "";
+  const lines   = desc.split("\n");
+  const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
+  const noteRaw = desc.match(/Note:\s*([\s\S]*)/)?.[1]?.trim() || (!url ? desc.trim() : "");
+  const title   = viewingEvent.summary?.replace(/^Read:\s*/, "") || "";
+  const datetime= viewingEvent.start?.dateTime || viewingEvent.start?.date;
+  closeViewModal();
+  openModal({ url, title, note: noteRaw, datetime }, viewingEvent.id);
+});
+
+viewDoneBtn.addEventListener("click", async () => {
+  if (!viewingEvent) return;
+  viewDoneBtn.disabled = true;
+  viewDoneBtn.textContent = "…";
+  try {
+    await deleteTaskEvent(viewingEvent.id);
+    closeViewModal();
+    showToast("Marked as done ✓");
+    loadTasks();
+  } catch (e) {
+    showToast("Could not delete: " + e.message);
+    viewDoneBtn.disabled = false;
+    viewDoneBtn.textContent = "✓ Done";
   }
 });
 
@@ -189,28 +280,30 @@ function renderTasks(events) {
     return;
   }
 
+  // Store events for quick lookup
+  const eventsMap = {};
+  events.forEach(ev => { eventsMap[ev.id] = ev; });
+
   taskList.innerHTML = events.map(ev => {
-    const start = new Date(ev.start?.dateTime || ev.start?.date);
-    const desc  = ev.description || "";
-    // Parse URL and note from description
+    const start   = new Date(ev.start?.dateTime || ev.start?.date);
+    const desc    = ev.description || "";
     const lines   = desc.split("\n");
-    const url     = lines[0] || "";
+    const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
     const noteRaw = desc.match(/Note:\s*([\s\S]*)/)?.[1]?.trim() || "";
     const title   = ev.summary?.replace(/^Read:\s*/, "") || url || "Note";
-    const isUrl   = url.startsWith("http");
+    const isUrl   = !!url;
     const timeStr = start.toLocaleString(undefined, { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
 
     return `
-      <div class="task-card" data-id="${ev.id}">
+      <div class="task-card" data-id="${ev.id}" role="button" tabindex="0" aria-label="View ${title}">
         <div class="task-card-top">
           <div class="task-card-info">
-            ${isUrl
-              ? `<a href="${url}" target="_blank" rel="noopener" class="task-title">${title}</a>`
-              : `<span class="task-title task-title--note">${title}</span>`
-            }
+            <span class="task-title ${isUrl ? '' : 'task-title--note'}">${title}</span>
             ${noteRaw ? `<div class="task-note">${noteRaw}</div>` : ""}
           </div>
-          <button class="btn btn--danger mark-done" data-id="${ev.id}" title="Mark as done">✓ Done</button>
+          <div class="card-actions">
+            <button class="btn--icon-edit edit-btn" data-id="${ev.id}" title="Edit" aria-label="Edit">✏️</button>
+          </div>
         </div>
         <div class="task-meta">
           <span class="task-time">${timeStr}</span>
@@ -219,25 +312,35 @@ function renderTasks(events) {
       </div>`;
   }).join("");
 
-  taskList.querySelectorAll(".mark-done").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id;
-      const card = taskList.querySelector(`.task-card[data-id="${id}"]`);
-      btn.disabled = true;
-      btn.textContent = "…";
-      try {
-        await deleteTaskEvent(id);
-        card.style.animation = "none";
-        card.style.opacity = "0";
-        card.style.transform = "scale(0.96)";
-        card.style.transition = "all 0.2s ease";
-        setTimeout(() => { card.remove(); if (!taskList.querySelector(".task-card")) renderTasks([]); }, 220);
-        showToast("Marked as done ✓");
-      } catch (e) {
-        showToast("Could not delete: " + e.message);
-        btn.disabled = false;
-        btn.textContent = "✓ Done";
+  // Tap card → view modal
+  taskList.querySelectorAll(".task-card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      // Don't open view if user clicked on the edit button
+      if (e.target.closest(".card-actions")) return;
+      const ev = eventsMap[card.dataset.id];
+      if (ev) openViewModal(ev);
+    });
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        const ev = eventsMap[card.dataset.id];
+        if (ev) openViewModal(ev);
       }
+    });
+  });
+
+  // Edit button → edit modal
+  taskList.querySelectorAll(".edit-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const ev = eventsMap[btn.dataset.id];
+      if (!ev) return;
+      const desc    = ev.description || "";
+      const lines   = desc.split("\n");
+      const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
+      const noteRaw = desc.match(/Note:\s*([\s\S]*)/)?.[1]?.trim() || (!url ? desc.trim() : "");
+      const title   = ev.summary?.replace(/^Read:\s*/, "") || "";
+      const datetime= ev.start?.dateTime || ev.start?.date;
+      openModal({ url, title, note: noteRaw, datetime }, ev.id);
     });
   });
 }

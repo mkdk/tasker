@@ -136,6 +136,38 @@ export async function createTaskEvent({ title, url, note, datetime }) {
   return resp.json();
 }
 
+export async function updateTaskEvent(eventId, { title, url, note, datetime }) {
+  const start = new Date(datetime);
+  const end   = new Date(start.getTime() + 15 * 60 * 1000);
+
+  const summary = title
+    ? `Read: ${title}`
+    : url
+      ? `Read: ${url.replace(/^https?:\/\//, "").split("/")[0]}`
+      : `Note: ${note.slice(0, 60)}`;
+
+  const description = [url, note ? `Note: ${note}` : ""].filter(Boolean).join("\n\n");
+
+  const body = {
+    summary, description,
+    start: { dateTime: start.toISOString() },
+    end:   { dateTime: end.toISOString()   },
+    reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 0 }] },
+    extendedProperties: { private: { pwaTask: "true" } },
+  };
+
+  const resp = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    { method: "PUT", headers: authHeaders(), body: JSON.stringify(body) }
+  );
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    if (resp.status === 401) { sessionStorage.removeItem("tasker_token"); }
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
 export async function listTaskEvents() {
   const params = new URLSearchParams({
     privateExtendedProperty: "pwaTask=true",
