@@ -128,6 +128,21 @@ button { cursor: pointer; font-family: var(--font); border: none; background: no
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
 
+.lang-select {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+.lang-select:hover {
+  background: var(--surface-2);
+}
+
 /* Theme icon visibility */
 [data-theme="dark"] .theme-icon-light { display: none; }
 [data-theme="dark"] .theme-icon-dark  { display: block; }
@@ -530,3 +545,32 @@ button { cursor: pointer; font-family: var(--font); border: none; background: no
 
 /* View modal footer: Done on right, Edit on left */
 .view-modal .modal-footer { justify-content: space-between; }
+
+/* ─── Sync Banner ─── */
+.sync-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.75rem 1.1rem;
+  background: hsla(35, 90%, 55%, 0.12);
+  border: 1px solid hsla(35, 90%, 55%, 0.28);
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  color: hsl(35, 85%, 35%);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+[data-theme="dark"] .sync-banner {
+  color: hsl(35, 90%, 65%);
+}
+.sync-banner-text {
+  flex: 1;
+  line-height: 1.4;
+}
+.btn--sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  box-shadow: none !important;
+}

@@ -26,7 +26,7 @@ function ensureClient() {
 }
 
 // ─── Token request wrapper ────────────────────────────────────────────────────
-function requestToken(prompt) {
+function requestToken(promptStr) {
   return new Promise((resolve, reject) => {
     tokenClient.callback = (response) => {
       if (response.error) { reject(new Error(response.error)); return; }
@@ -41,7 +41,9 @@ function requestToken(prompt) {
       localStorage.setItem("tasker_was_logged_in", "1");
       resolve();
     };
-    tokenClient.requestAccessToken({ prompt });
+    const options = {};
+    if (promptStr !== undefined) options.prompt = promptStr;
+    tokenClient.requestAccessToken(options);
   });
 }
 
@@ -95,7 +97,7 @@ export async function tryRestoreSession() {
 export async function signIn() {
   await waitForGis();
   ensureClient();
-  await requestToken(""); // Will show account chooser only if needed
+  await requestToken(); // Default behavior: shows popup if needed
 }
 
 export function signOut() {
@@ -203,7 +205,7 @@ export async function listTaskEvents() {
   if (!resp.ok) {
     await handleApiError(resp);
   }
-  return (await resp.json()).items || [];
+  return (await resp.json()).items?.filter(ev => ev.status !== "cancelled") || [];
 }
 
 export async function deleteTaskEvent(eventId) {

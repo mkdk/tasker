@@ -64,7 +64,10 @@ const translations = {
     "msg-delete-failed": "Could not delete: ",
     "chip-link": "link",
     "chip-note": "note",
-    "default-title-note": "Note"
+    "default-title-note": "Note",
+    "sync-banner-text": "Authentication expired. Please sign in to sync your changes.",
+    "sync-signin-btn": "Sign In",
+    "msg-login-warning": "To save or update, please sign in using the same Google Account."
   },
   ru: {
     // Header
@@ -129,7 +132,10 @@ const translations = {
     "msg-delete-failed": "Не удалось удалить: ",
     "chip-link": "ссылка",
     "chip-note": "заметка",
-    "default-title-note": "Заметка"
+    "default-title-note": "Заметка",
+    "sync-banner-text": "Сессия истекла. Войдите в аккаунт для синхронизации изменений.",
+    "sync-signin-btn": "Войти",
+    "msg-login-warning": "Чтобы сохранить изменения, пожалуйста, войдите под тем же аккаунтом Google."
   }
 };
 
@@ -145,11 +151,6 @@ export function initLanguage() {
     currentLang = navLang.toLowerCase().startsWith("ru") ? "ru" : "en";
   }
   applyLanguage(currentLang);
-}
-
-export function toggleLanguage() {
-  const next = currentLang === "en" ? "ru" : "en";
-  setLanguage(next);
 }
 
 export function setLanguage(lang) {
@@ -192,9 +193,5 @@ function applyLanguage(lang) {
     }
   });
 
-  // Update lang toggle button text
-  const langToggleText = document.getElementById("lang-toggle-text");
-  if (langToggleText) {
-    langToggleText.textContent = lang.toUpperCase();
-  }
+  // No need to update button text since we use a select element
 }
