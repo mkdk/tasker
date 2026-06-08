@@ -31,9 +31,13 @@ function requestToken(prompt) {
     tokenClient.callback = (response) => {
       if (response.error) { reject(new Error(response.error)); return; }
       accessToken = response.access_token;
-      // Save to sessionStorage so same tab survives soft reloads
-      // and to localStorage so we can detect "was previously logged in"
-      sessionStorage.setItem("tasker_token", accessToken);
+      
+      // Calculate token expiry (expires_in is in seconds, e.g. 3600)
+      const expiresIn = response.expires_in ? parseInt(response.expires_in, 10) : 3600;
+      const expiryTime = Date.now() + expiresIn * 1000;
+      
+      localStorage.setItem("tasker_token", accessToken);
+      localStorage.setItem("tasker_token_expiry", expiryTime.toString());
       localStorage.setItem("tasker_was_logged_in", "1");
       resolve();
     };
@@ -51,12 +55,21 @@ function requestToken(prompt) {
  * 3. Otherwise → return false so the welcome screen stays.
  */
 export async function tryRestoreSession() {
-  // 1. Same-tab refresh: token is in sessionStorage
-  const cached = sessionStorage.getItem("tasker_token");
-  if (cached) {
-    accessToken = cached;
-    console.log("[auth] restored from sessionStorage");
-    return true;
+  // 1. Restore from localStorage if not expired
+  const cached = localStorage.getItem("tasker_token");
+  const expiry = localStorage.getItem("tasker_token_expiry");
+  
+  if (cached && expiry) {
+    const isExpired = Date.now() > parseInt(expiry, 10);
+    if (!isExpired) {
+      accessToken = cached;
+      console.log("[auth] restored from localStorage (valid token)");
+      return true;
+    } else {
+      console.log("[auth] localStorage token expired");
+      localStorage.removeItem("tasker_token");
+      localStorage.removeItem("tasker_token_expiry");
+    }
   }
 
   // 2. Was previously logged in — try silent GIS token grant
@@ -88,7 +101,8 @@ export async function signIn() {
 export function signOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken);
   accessToken = null;
-  sessionStorage.removeItem("tasker_token");
+  localStorage.removeItem("tasker_token");
+  localStorage.removeItem("tasker_token_expiry");
   localStorage.removeItem("tasker_was_logged_in");
 }
 
@@ -101,6 +115,16 @@ function authHeaders() {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   };
+}
+
+// ─── API Error Helper ────────────────────────────────────────────────────────
+async function handleApiError(resp) {
+  const err = await resp.json().catch(() => ({}));
+  if (resp.status === 401) {
+    localStorage.removeItem("tasker_token");
+    localStorage.removeItem("tasker_token_expiry");
+  }
+  throw new Error(err.error?.message || `HTTP ${resp.status}`);
 }
 
 // ─── Calendar API ─────────────────────────────────────────────────────────────
@@ -129,9 +153,7 @@ export async function createTaskEvent({ title, url, note, datetime }) {
     { method: "POST", headers: authHeaders(), body: JSON.stringify(body) }
   );
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    if (resp.status === 401) { sessionStorage.removeItem("tasker_token"); }
-    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    await handleApiError(resp);
   }
   return resp.json();
 }
@@ -161,9 +183,7 @@ export async function updateTaskEvent(eventId, { title, url, note, datetime }) {
     { method: "PUT", headers: authHeaders(), body: JSON.stringify(body) }
   );
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    if (resp.status === 401) { sessionStorage.removeItem("tasker_token"); }
-    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    await handleApiError(resp);
   }
   return resp.json();
 }
@@ -181,9 +201,7 @@ export async function listTaskEvents() {
     { headers: authHeaders() }
   );
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    if (resp.status === 401) { sessionStorage.removeItem("tasker_token"); }
-    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    await handleApiError(resp);
   }
   return (await resp.json()).items || [];
 }
@@ -194,6 +212,5 @@ export async function deleteTaskEvent(eventId) {
     { method: "DELETE", headers: authHeaders() }
   );
   if (resp.status === 204 || resp.ok) return;
-  const err = await resp.json().catch(() => ({}));
-  throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  await handleApiError(resp);
 }
