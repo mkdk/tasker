@@ -242,6 +242,10 @@ function openViewModal(ev) {
 
   viewModalTitle.textContent = title;
   viewTime.textContent       = timeStr;
+  
+  // Reset Done button state
+  viewDoneBtn.disabled = false;
+  viewDoneBtn.textContent = t("view-done-btn");
 
   if (url) {
     viewUrl.href = url;
@@ -293,7 +297,7 @@ viewDoneBtn.addEventListener("click", async () => {
   } catch (e) {
     showToast(t("msg-delete-failed") + e.message);
     viewDoneBtn.disabled = false;
-    viewDoneBtn.textContent = `✓ ${t("view-done-btn")}`;
+    viewDoneBtn.textContent = t("view-done-btn");
   }
 });
 
