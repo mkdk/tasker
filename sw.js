@@ -1,6 +1,6 @@
 // sw.js – Service Worker
-const CACHE_NAME = "tasker-pwa-v4";
-const PRECACHE = ["/index.html", "/styles.css", "/manifest.json"];
+const CACHE_NAME = "tasker-pwa-v5";
+const PRECACHE = ["./", "./index.html", "./styles.css", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
   // Activate immediately — don't wait for old tabs to close
@@ -44,7 +44,7 @@ self.addEventListener("fetch", (e) => {
   // HTML → Network first (always get fresh page)
   if (e.request.mode === "navigate") {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match("/index.html"))
+      fetch(e.request).catch(() => caches.match("./index.html"))
     );
     return;
   }
