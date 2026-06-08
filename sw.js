@@ -1,6 +1,6 @@
 // sw.js – Service Worker
-const CACHE_NAME = "tasker-pwa-v5";
-const PRECACHE = ["./", "./index.html", "./styles.css", "./manifest.json"];
+const CACHE_NAME = "tasker-pwa-v6";
+const PRECACHE = ["./", "./index.html", "./styles.css", "./manifest.json?v=5"];
 
 self.addEventListener("install", (e) => {
   // Activate immediately — don't wait for old tabs to close
