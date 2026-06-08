@@ -115,12 +115,15 @@ function openModal(preFill = {}, eventId = null) {
   inputDatetime.value = "";
   selectedDate        = null;
   presetBtns.forEach(b => b.classList.remove("active"));
-  // Pre-set the date if editing
+  // Pre-set the date if editing or default to 8 hours
   if (preFill.datetime) {
     selectedDate = new Date(preFill.datetime);
     const local = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
       .toISOString().slice(0, 16);
     inputDatetime.value = local;
+  } else {
+    const defaultBtn = Array.from(presetBtns).find(b => b.dataset.hours === "8");
+    if (defaultBtn) defaultBtn.click();
   }
   modalTitle.textContent  = eventId ? "Edit Reminder" : "New Reminder";
   modalSave.textContent   = eventId ? "Update"        : "Save Reminder";
