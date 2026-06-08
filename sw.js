@@ -1,5 +1,5 @@
 // sw.js – Service Worker
-const CACHE_NAME = "tasker-pwa-v7";
+const CACHE_NAME = "tasker-pwa-v8";
 const PRECACHE = ["./", "./index.html", "./styles.css", "./manifest.json?v=5"];
 
 self.addEventListener("install", (e) => {

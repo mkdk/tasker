@@ -61,6 +61,10 @@ function setAuthenticated(isAuth) {
     welcomeScreen.classList.add("hidden");
     appScreen.classList.remove("hidden");
     loadTasks();
+    if (pendingShare) {
+      openModal(pendingShare);
+      pendingShare = null;
+    }
   } else {
     signInBtn.classList.remove("hidden");
     signOutBtn.classList.add("hidden");
@@ -349,20 +353,32 @@ function renderTasks(events) {
 }
 
 // ─── Share Target ────────────────────────────────────────────────────────────
+let pendingShare = null;
+
 function parseShareParams() {
   const p = new URLSearchParams(window.location.search);
-  const url = p.get("url") || p.get("text");
-  const title = p.get("title") || "";
-  if (url) {
+  const sharedUrl = p.get("url");
+  const sharedText = p.get("text");
+  const sharedTitle = p.get("title") || "";
+
+  if (sharedUrl || sharedText) {
     history.replaceState(null, "", location.pathname);
-    // Show modal once signed in; if not yet, queue it
-    if (!appScreen.classList.contains("hidden")) {
-      openModal({ url, title });
-    } else {
-      signInBtn.addEventListener("click", () => {
-        setTimeout(() => openModal({ url, title }), 800);
-      }, { once: true });
+    
+    let url = "";
+    let note = "";
+    if (sharedUrl) {
+      url = sharedUrl.trim();
+      note = sharedText ? sharedText.trim() : "";
+    } else if (sharedText) {
+      const trimmed = sharedText.trim();
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        url = trimmed;
+      } else {
+        note = trimmed;
+      }
     }
+
+    pendingShare = { url, title: sharedTitle, note };
   }
 }
 
