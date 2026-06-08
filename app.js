@@ -1,5 +1,6 @@
 // app.js – UI logic for Read‑it‑later PWA
 import { signIn, signOut, tryRestoreSession, createTaskEvent, updateTaskEvent, listTaskEvents, deleteTaskEvent } from "./api.js";
+import { initLanguage, toggleLanguage, getLanguage, t } from "./i18n.js";
 
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -21,7 +22,36 @@ themeToggle.addEventListener("click", () => {
   applyTheme(current === "dark" ? "light" : "dark");
 });
 
+langToggle.addEventListener("click", () => {
+  toggleLanguage();
+  // Reload task list with new language strings
+  const googleBtn = document.getElementById("sign-in-btn");
+  if (googleBtn && googleBtn.querySelector("span")) {
+    googleBtn.querySelector("span").textContent = t("sign-in-btn");
+  }
+  if (document.getElementById("modal-overlay").classList.contains("hidden") === false) {
+    const isEdit = !!editingEventId;
+    modalTitle.textContent  = isEdit ? t("modal-title-edit") : t("modal-title-new");
+    modalSave.textContent   = isEdit ? t("modal-save-edit") : t("modal-save-new");
+  }
+  if (document.getElementById("view-overlay").classList.contains("hidden") === false && viewingEvent) {
+    // Refresh view modal title/time
+    const desc    = viewingEvent.description || "";
+    const lines   = desc.split("\n");
+    const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
+    const title   = viewingEvent.summary?.replace(/^Read:\s*/, "") || url || t("default-title-note");
+    const start   = new Date(viewingEvent.start?.dateTime || viewingEvent.start?.date);
+    const timeStr = start.toLocaleString(getLanguage(), { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+    viewModalTitle.textContent = title;
+    viewTime.textContent       = timeStr;
+  }
+  if (isSignedIn()) {
+    loadTasks();
+  }
+});
+
 // ─── Elements ────────────────────────────────────────────────────────────────
+const langToggle    = document.getElementById("lang-toggle");
 const signInBtn     = document.getElementById("sign-in-btn");
 const signOutBtn    = document.getElementById("sign-out-btn");
 const welcomeScreen = document.getElementById("welcome-screen");
@@ -75,21 +105,21 @@ function setAuthenticated(isAuth) {
 
 signInBtn.addEventListener("click", async () => {
   signInBtn.disabled = true;
-  signInBtn.textContent = "Signing in…";
+  signInBtn.textContent = t("msg-signing-in");
   try {
     await signIn();
     setAuthenticated(true);
   } catch (e) {
-    showToast("Sign‑in failed: " + e.message);
+    showToast(t("msg-signin-failed") + e.message);
     signInBtn.disabled = false;
-    signInBtn.innerHTML = `<svg class="google-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Sign in with Google`;
+    signInBtn.innerHTML = `<svg class="google-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> <span data-i18n="sign-in-btn">${t("sign-in-btn")}</span>`;
   }
 });
 
 signOutBtn.addEventListener("click", () => {
   signOut();
   setAuthenticated(false);
-  showToast("Signed out");
+  showToast(t("msg-signed-out"));
 });
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -129,8 +159,8 @@ function openModal(preFill = {}, eventId = null) {
     const defaultBtn = Array.from(presetBtns).find(b => b.dataset.hours === "8");
     if (defaultBtn) defaultBtn.click();
   }
-  modalTitle.textContent  = eventId ? "Edit Reminder" : "New Reminder";
-  modalSave.textContent   = eventId ? "Update"        : "Save Reminder";
+  modalTitle.textContent  = eventId ? t("modal-title-edit") : t("modal-title-new");
+  modalSave.textContent   = eventId ? t("modal-save-edit") : t("modal-save-new");
   modalOverlay.classList.remove("hidden");
   setTimeout(() => (inputUrl.value ? inputTitle.focus() : inputUrl.focus()), 100);
 }
@@ -172,19 +202,19 @@ modalSave.addEventListener("click", async () => {
   const title = inputTitle.value.trim();
   const note  = inputNote.value.trim();
 
-  if (!url && !note && !title) { showToast("Add a URL, title or note"); return; }
-  if (!selectedDate)           { showToast("Please select a reminder time"); return; }
+  if (!url && !note && !title) { showToast(t("msg-validation-failed")); return; }
+  if (!selectedDate)           { showToast(t("msg-select-time")); return; }
 
   modalSave.disabled = true;
-  modalSave.textContent = "Saving…";
+  modalSave.textContent = t("msg-saving");
 
   try {
     if (editingEventId) {
       await updateTaskEvent(editingEventId, { title, url, note, datetime: selectedDate });
-      showToast("Updated ✓");
+      showToast(t("msg-updated"));
     } else {
       await createTaskEvent({ title, url, note, datetime: selectedDate });
-      showToast("Reminder saved ✓");
+      showToast(t("msg-saved"));
     }
     closeModal();
     loadTasks();
@@ -192,7 +222,7 @@ modalSave.addEventListener("click", async () => {
     showToast("Failed to save: " + e.message);
   } finally {
     modalSave.disabled = false;
-    modalSave.textContent = editingEventId ? "Update" : "Save Reminder";
+    modalSave.textContent = editingEventId ? t("modal-save-edit") : t("modal-save-new");
   }
 });
 
@@ -205,9 +235,9 @@ function openViewModal(ev) {
   const lines   = desc.split("\n");
   const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
   const noteRaw = desc.match(/Note:\s*([\s\S]*)/)?.[1]?.trim() || (!url ? desc.trim() : "");
-  const title   = ev.summary?.replace(/^Read:\s*/, "") || url || "Note";
+  const title   = ev.summary?.replace(/^Read:\s*/, "") || url || t("default-title-note");
   const start   = new Date(ev.start?.dateTime || ev.start?.date);
-  const timeStr = start.toLocaleString(undefined, { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+  const timeStr = start.toLocaleString(getLanguage(), { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
 
   viewModalTitle.textContent = title;
   viewTime.textContent       = timeStr;
@@ -257,23 +287,24 @@ viewDoneBtn.addEventListener("click", async () => {
   try {
     await deleteTaskEvent(viewingEvent.id);
     closeViewModal();
-    showToast("Marked as done ✓");
+    showToast(t("msg-done"));
     loadTasks();
   } catch (e) {
-    showToast("Could not delete: " + e.message);
+    showToast(t("msg-delete-failed") + e.message);
     viewDoneBtn.disabled = false;
-    viewDoneBtn.textContent = "✓ Done";
+    viewDoneBtn.textContent = `✓ ${t("view-done-btn")}`;
   }
 });
 
 // ─── Task List ───────────────────────────────────────────────────────────────
 async function loadTasks() {
-  taskList.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><p class="empty-text">Loading…</p></div>`;
+  taskList.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><p class="empty-text">${t("empty-loading")}</p></div>`;
   try {
     const events = await listTaskEvents();
     renderTasks(events);
   } catch (e) {
-    taskList.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p class="empty-text">Could not load tasks.<br/>Check your connection.</p></div>`;
+    const errorText = getLanguage() === "ru" ? "Не удалось загрузить задачи.<br/>Проверьте подключение." : "Could not load tasks.<br/>Check your connection.";
+    taskList.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p class="empty-text">${errorText}</p></div>`;
   }
 }
 
@@ -282,7 +313,7 @@ function renderTasks(events) {
     taskList.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📭</div>
-        <p class="empty-text">No pending items.<br/>Add your first link or note!</p>
+        <p class="empty-text">${t("empty-desc")}</p>
       </div>`;
     return;
   }
@@ -297,9 +328,9 @@ function renderTasks(events) {
     const lines   = desc.split("\n");
     const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
     const noteRaw = desc.match(/Note:\s*([\s\S]*)/)?.[1]?.trim() || "";
-    const title   = ev.summary?.replace(/^Read:\s*/, "") || url || "Note";
+    const title   = ev.summary?.replace(/^Read:\s*/, "") || url || t("default-title-note");
     const isUrl   = !!url;
-    const timeStr = start.toLocaleString(undefined, { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+    const timeStr = start.toLocaleString(getLanguage(), { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
 
     return `
       <div class="task-card" data-id="${ev.id}" role="button" tabindex="0" aria-label="View ${title}">
@@ -314,7 +345,7 @@ function renderTasks(events) {
         </div>
         <div class="task-meta">
           <span class="task-time">${timeStr}</span>
-          ${isUrl ? `<span class="task-chip">link</span>` : `<span class="task-chip">note</span>`}
+          ${isUrl ? `<span class="task-chip">${t("chip-link")}</span>` : `<span class="task-chip">${t("chip-note")}</span>`}
         </div>
       </div>`;
   }).join("");
@@ -393,6 +424,7 @@ if ("serviceWorker" in navigator) {
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 initTheme();
+initLanguage();
 setAuthenticated(false);
 parseShareParams();
 
