@@ -17,39 +17,6 @@ function initTheme() {
   applyTheme(saved || (prefersDark ? "dark" : "light"));
 }
 
-themeToggle.addEventListener("click", () => {
-  const current = document.documentElement.getAttribute("data-theme");
-  applyTheme(current === "dark" ? "light" : "dark");
-});
-
-langToggle.addEventListener("click", () => {
-  toggleLanguage();
-  // Reload task list with new language strings
-  const googleBtn = document.getElementById("sign-in-btn");
-  if (googleBtn && googleBtn.querySelector("span")) {
-    googleBtn.querySelector("span").textContent = t("sign-in-btn");
-  }
-  if (document.getElementById("modal-overlay").classList.contains("hidden") === false) {
-    const isEdit = !!editingEventId;
-    modalTitle.textContent  = isEdit ? t("modal-title-edit") : t("modal-title-new");
-    modalSave.textContent   = isEdit ? t("modal-save-edit") : t("modal-save-new");
-  }
-  if (document.getElementById("view-overlay").classList.contains("hidden") === false && viewingEvent) {
-    // Refresh view modal title/time
-    const desc    = viewingEvent.description || "";
-    const lines   = desc.split("\n");
-    const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
-    const title   = viewingEvent.summary?.replace(/^Read:\s*/, "") || url || t("default-title-note");
-    const start   = new Date(viewingEvent.start?.dateTime || viewingEvent.start?.date);
-    const timeStr = start.toLocaleString(getLanguage(), { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
-    viewModalTitle.textContent = title;
-    viewTime.textContent       = timeStr;
-  }
-  if (isSignedIn()) {
-    loadTasks();
-  }
-});
-
 // ─── Elements ────────────────────────────────────────────────────────────────
 const langToggle    = document.getElementById("lang-toggle");
 const signInBtn     = document.getElementById("sign-in-btn");
@@ -82,6 +49,40 @@ const viewNote      = document.getElementById("view-note");
 const viewTime      = document.getElementById("view-time");
 const viewEditBtn   = document.getElementById("view-edit-btn");
 const viewDoneBtn   = document.getElementById("view-done-btn");
+
+// ─── Theme & Language Listeners ──────────────────────────────────────────────
+themeToggle.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme");
+  applyTheme(current === "dark" ? "light" : "dark");
+});
+
+langToggle.addEventListener("click", () => {
+  toggleLanguage();
+  // Reload task list with new language strings
+  const googleBtn = document.getElementById("sign-in-btn");
+  if (googleBtn && googleBtn.querySelector("span")) {
+    googleBtn.querySelector("span").textContent = t("sign-in-btn");
+  }
+  if (document.getElementById("modal-overlay").classList.contains("hidden") === false) {
+    const isEdit = !!editingEventId;
+    modalTitle.textContent  = isEdit ? t("modal-title-edit") : t("modal-title-new");
+    modalSave.textContent   = isEdit ? t("modal-save-edit") : t("modal-save-new");
+  }
+  if (document.getElementById("view-overlay").classList.contains("hidden") === false && viewingEvent) {
+    // Refresh view modal title/time
+    const desc    = viewingEvent.description || "";
+    const lines   = desc.split("\n");
+    const url     = lines[0]?.startsWith("http") ? lines[0].trim() : "";
+    const title   = viewingEvent.summary?.replace(/^Read:\s*/, "") || url || t("default-title-note");
+    const start   = new Date(viewingEvent.start?.dateTime || viewingEvent.start?.date);
+    const timeStr = start.toLocaleString(getLanguage(), { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+    viewModalTitle.textContent = title;
+    viewTime.textContent       = timeStr;
+  }
+  if (isSignedIn()) {
+    loadTasks();
+  }
+});
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 function setAuthenticated(isAuth) {
